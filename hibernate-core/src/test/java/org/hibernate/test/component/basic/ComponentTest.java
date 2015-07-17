@@ -22,11 +22,6 @@
  * Boston, MA  02110-1301  USA
  */
 package org.hibernate.test.component.basic;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import org.junit.Test;
 
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
@@ -47,6 +42,12 @@ import org.hibernate.testing.RequiresDialect;
 import org.hibernate.testing.TestForIssue;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.hibernate.type.StandardBasicTypes;
+import org.junit.Ignore;
+import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -132,9 +133,9 @@ public class ComponentTest extends BaseCoreFunctionalTestCase {
 		s = openSession();
 		t = s.beginTransaction();
 		u = (User) s.get(User.class, "gavin");
-		assertEquals( u.getPerson().getAddress(), "Phipps Place" );
-		assertEquals( u.getPerson().getPreviousAddress(), "Karbarook Ave" );
-		assertEquals( u.getPerson().getYob(), u.getPerson().getDob().getYear()+1900 );
+		assertEquals(u.getPerson().getAddress(), "Phipps Place");
+		assertEquals(u.getPerson().getPreviousAddress(), "Karbarook Ave");
+		assertEquals(u.getPerson().getYob(), u.getPerson().getDob().getYear() + 1900);
 		u.setPassword("$ecret");
 		t.commit();
 		s.close();
@@ -144,7 +145,7 @@ public class ComponentTest extends BaseCoreFunctionalTestCase {
 		u = (User) s.get(User.class, "gavin");
 		assertEquals( u.getPerson().getAddress(), "Phipps Place" );
 		assertEquals( u.getPerson().getPreviousAddress(), "Karbarook Ave" );
-		assertEquals( u.getPassword(), "$ecret" );
+		assertEquals(u.getPassword(), "$ecret");
 		s.delete(u);
 		t.commit();
 		s.close();
@@ -156,14 +157,14 @@ public class ComponentTest extends BaseCoreFunctionalTestCase {
 		Session s = openSession();
 		s.beginTransaction();
 		User u = new User( "steve", "hibernater", new Person( "Steve Ebersole", new Date(), "Main St") );
-		s.persist( u );
+		s.persist(u);
 		s.flush();
 		long intialUpdateCount = sessionFactory().getStatistics().getEntityUpdateCount();
-		u.getPerson().setAddress( "Austin" );
+		u.getPerson().setAddress("Austin");
 		s.flush();
 		assertEquals( intialUpdateCount + 1, sessionFactory().getStatistics().getEntityUpdateCount() );
 		intialUpdateCount = sessionFactory().getStatistics().getEntityUpdateCount();
-		u.getPerson().setAddress( "Cedar Park" );
+		u.getPerson().setAddress("Cedar Park");
 		s.flush();
 		assertEquals( intialUpdateCount + 1, sessionFactory().getStatistics().getEntityUpdateCount() );
 		s.delete( u );
@@ -176,14 +177,14 @@ public class ComponentTest extends BaseCoreFunctionalTestCase {
 		Session s = openSession();
 		Transaction t = s.beginTransaction();
 		Employee emp = new Employee();
-		emp.setHireDate( new Date() );
-		emp.setPerson( new Person() );
-		emp.getPerson().setName( "steve" );
-		emp.getPerson().setDob( new Date() );
-		s.save( emp );
+		emp.setHireDate(new Date());
+		emp.setPerson(new Person());
+		emp.getPerson().setName("steve");
+		emp.getPerson().setDob(new Date());
+		s.save(emp);
 
 		s.createQuery( "from Employee e where e.person = :p and 1 = 1 and 2=2" ).setParameter( "p", emp.getPerson() ).list();
-		s.createQuery( "from Employee e where :p = e.person" ).setParameter( "p", emp.getPerson() ).list();
+		s.createQuery( "from Employee e where :p = e.person" ).setParameter("p", emp.getPerson()).list();
 		// The following fails on Sybase due to HHH-3510. When HHH-3510 
 		// is fixed, the check for SybaseASE15Dialect should be removed.
 		if ( ! ( getDialect() instanceof SybaseASE15Dialect ) ) {
@@ -206,10 +207,10 @@ public class ComponentTest extends BaseCoreFunctionalTestCase {
 		Session s = openSession();
 		Transaction t = s.beginTransaction();
 		Employee emp = new Employee();
-		emp.setHireDate( new Date() );
-		emp.setPerson( new Person() );
-		emp.getPerson().setName( "steve" );
-		emp.getPerson().setDob( new Date() );
+		emp.setHireDate(new Date());
+		emp.setPerson(new Person());
+		emp.getPerson().setName("steve");
+		emp.getPerson().setDob(new Date());
 		s.save( emp );
 		s.createQuery( "from Employee e where e.person = ('steve', current_timestamp)" ).list();
 		s.delete( emp );
@@ -421,5 +422,34 @@ public class ComponentTest extends BaseCoreFunctionalTestCase {
 		s.close();
 	}
 
+	@Test
+	public void testUpdateHql() {
+		Session s = openSession();
+		Transaction t = s.beginTransaction();
+		Employee emp = new Employee();
+		emp.setHireDate(new Date());
+		emp.setPerson(new Person("steve", new Date(), "address"));
+		emp.setOptionalComponent(new OptionalComponent());
+		emp.getOptionalComponent().setValue1("value1");
+		emp.getOptionalComponent().setValue1("value2");
+		s.persist(emp);
+		t.commit();
+		s.close();
+
+		s = openSession();
+		t = s.beginTransaction();
+		OptionalComponent comp = new OptionalComponent();
+		comp.setValue1("emp-value1");
+		comp.setValue2("emp-value2");
+		assertEquals(1, s.createQuery("update Employee set optionalComponent = :comp").setParameter("comp", comp)
+						 .executeUpdate());
+
+		emp = (Employee)s.get(Employee.class, emp.getId());
+		t.commit();
+		s.close();
+
+		assertEquals("emp-value1", emp.getOptionalComponent().getValue1());
+		assertEquals("emp-value2", emp.getOptionalComponent().getValue2());
+	}
 }
 
